@@ -1,0 +1,1 @@
+{:schema "etzhayyim.migration/v1" :source {:repository "etzhayyim/root" :revision "d1ff44f4946bd8e50808dd3fd06b7beeefb8d5c8" :path "60-apps/etzhayyim-project-voxelforge" :tree "725818644a4ad777f882b266ba6a1537dfd34e27" :tracked-files 22 :bytes 57416} :destination {:repository "etzhayyim/com-etzhayyim-app-voxelforge"} :identity {:allowed-additions ["README.edn" "migration.edn"]}}

@@ -1,0 +1,31 @@
+{
+  "name": "etzhayyim-project-voxelforge",
+  "main": "svelte/.svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2026-05-08",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "routes": [
+    {
+      "pattern": "voxelforge.etzhayyim.com/*",
+      "zone_name": "etzhayyim.com"
+    }
+  ],
+  "vars": {
+    "VOXELFORGE_VERSION": "0.1.0",
+    "VOXELFORGE_ACTOR_DID": "did:web:voxelforge.etzhayyim.com",
+    "PDS_URL": "https://atproto.etzhayyim.com",
+    "AUTHN_URL": "https://authn.etzhayyim.com",
+    "APP_FRAMEWORK": "sveltekit-edge-bff",
+    "AGENTGATEWAY_MCP_ROUTER_URL": "https://mcp.etzhayyim.com/xrpc/com.etzhayyim.mcp.message"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./svelte/.svelte-kit/cloudflare/client",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  }
+}

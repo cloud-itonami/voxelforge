@@ -1,0 +1,20 @@
+{
+  "name": "etzhayyim-project-voxelforge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/app.ts",
+  "scripts": {
+    "deploy": "etzhayyim deploy --no-svelte",
+    "smoke": "curl -s https://voxelforge.etzhayyim.com/health"
+  },
+  "dependencies": {
+    "@etzhayyim/kotodama-host-sdk": "workspace:*",
+    "@etzhayyim/graph-schema": "workspace:*",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "typescript": "^5.6.0"
+  }
+}

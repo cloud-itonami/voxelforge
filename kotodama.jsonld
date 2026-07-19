@@ -1,0 +1,50 @@
+{
+  "@context": "https://etzhayyim.com/ns/kotodama/v1",
+  "name": "etzhayyim-project-voxelforge",
+  "nanoid": "voxelforg",
+  "performerType": "service",
+  "displayName": "Voxelforge",
+  "description": "3D design pipeline. text / image / CAD code → mesh (.glb) + voxel (.vox MagicaVoxel) via LangGraph Server + Granian on RunPod 6000 Ada unified pod (TRELLIS + ComfyUI 3D-Pack + CadQuery). Output consumed by isekai (kami-voxel) and external Minecraft tools.",
+  "did": "did:web:voxelforge.etzhayyim.com",
+  "tier": "T2",
+  "uiType": "appview",
+  "embedUrl": "https://voxelforge.etzhayyim.com/embed",
+  "routes": [
+    {
+      "host": "voxelforge.etzhayyim.com"
+    }
+  ],
+  "layer": "edge-dispatcher",
+  "atStandard": false,
+  "nsidPrefixes": [
+    "com.etzhayyim.apps.voxelforge"
+  ],
+  "backendDependencies": {
+    "atproto": "https://atproto.etzhayyim.com",
+    "authn": "https://authn.etzhayyim.com",
+    "bpmnDispatcher": "https://dispatcher.etzhayyim.com",
+    "langgraphServer": "in-cluster: voxelforge-langgraph.mitama-udf.svc.cluster.local:8000",
+    "rwHyperdrive": "configured via env.HYPERDRIVE binding"
+  },
+  "profile": {
+    "displayName": "Voxelforge",
+    "description": "3D design forge. Bring a sketch, a CAD file, or just words. Get a mesh and a voxel grid back. Drop them straight into isekai, MagicaVoxel, Blender, or your favorite Minecraft import tool.",
+    "avatar": "VF",
+    "category": "infrastructure",
+    "country": "jpn",
+    "operator": "etzhayyim",
+    "isBot": true,
+    "agentType": "reactive"
+  },
+  "adr": [
+    "2605080700",
+    "2605080600",
+    "2605080000",
+    "2605010000",
+    "0036",
+    "0041",
+    "0095",
+    "2604282300",
+    "2604251830"
+  ]
+}

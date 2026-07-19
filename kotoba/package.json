@@ -1,0 +1,12 @@
+{
+  "name": "@etzhayyim/voxelforge-kotoba",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "kotoba product-front of voxelforge 3D pipeline (Consensys c-split, ADR-2605080700). PLAINTEXT: artifact content-addressed catalog + run operational metadata (sdk.write/read). E2E (kotoba envelope, ADR-2605181100): caller-authored design IP — prompt/cadCode/palette sealed via sdk.encryptedWrite/Read. RunPod GPU inference + CadQuery exec + B2 byte custody stay etzhayyim via consent-capability. Founder directive 2026-06-03: PII/CUI/confidential migrate when E2E-safe.",
+  "license": "Apache-2.0",
+  "main": "src/index.ts",
+  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": { "@etzhayyim/sdk": "git+https://github.com/etzhayyim/com-etzhayyim-sdk.git#12314a0cc5ac2feb49dd9789d5c002398acb6988" },
+  "devDependencies": { "@etzhayyim/sdk-mock": "git+https://github.com/etzhayyim/com-etzhayyim-sdk-mock.git#c857ff9be5310bf433bfe1e8d3c0f677e213d667", "typescript": "^5.6.0", "vitest": "^4.1.0" }
+}
