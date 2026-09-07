@@ -6,11 +6,12 @@
   アルゴリズムではなく、**複数の面が同じ actor・同じ lexicon・同じ安全境界に
   ついて同じことを言っている**という合意である:
 
-    src/app.ts                          thin edge（probe・Bearer 解決・NSID 転送）
-    src/dispatcher.ts                   bpmn-dispatcher への HMAC 署名転送
-    svelte/src/routes/xrpc/[...path]/   実際に配備される XRPC 面（MCP router 転送）
+    src/app.ts                          thin edge（probe・Bearer 解決・NSID 転送）—— 配備されていない（下記参照）
+    src/dispatcher.ts                   bpmn-dispatcher への HMAC 署名転送 —— 同上、配備されていない
+    src/xrpc-agentgateway-proxy.ts      旧 svelte route を凍結保存（配備されない・未配線）
+    cljs/src/voxelforge/app.cljs        実際に配備されるフロントエンド（reagent/re-frame + jp-go-dds）
     kotoba/src/types.ts                 記録面の lexicon と validator
-    wrangler.jsonc                      配備（main / routes / vars）
+    wrangler.jsonc                      配備（main 無し・routes / vars / assets）
     kotodama.jsonld                     actor identity（DID / nanoid / nsidPrefixes）
     package.json / README.edn           名前と版
     migration.edn                       抽出元の path
@@ -29,14 +30,25 @@
   `apps/` 有りと、両方を書いている）。ここは両方を pin して、片方が動いたら
   見えるようにする —— 「どちらが正か」はこのテストの決めることではない。
 
-  ## 配備されるのは thin edge ではない（2026-08-26 実測）
+  ## Svelte → ClojureScript 移行後、配備されるのは静的 assets だけである（2026-09-07 更新）
 
-  `wrangler.main` は SvelteKit の build 出力を指しており、`src/app.ts` は
-  配備の実行経路に**入っていない**。しかも 2 つの面は**信頼モデルが違う**:
-  thin edge は PDS binding で Bearer を解決してから転送し、配備される
-  svelte route は authorization をそのまま MCP router へ委譲する。
-  下の `deployed-*` 群は後者を pin する —— thin edge の guard を検査した
-  緑を、配備面の安全性の証拠として読ませないためである。
+  旧文はここで「配備されるのは thin edge ではなく SvelteKit build である」と
+  書いていたが、その SvelteKit build 自体が `svelte/` ごと削除された。
+  `wrangler.jsonc` から `main` を落としたので、**`src/app.ts` の thin edge も
+  `src/dispatcher.ts` の HMAC 転送も、この Worker では 1 バイトも実行されない**
+  —— これは今回の移行が壊した性質ではなく、移行前から真だった性質である
+  （旧 `main` も SvelteKit build を指しており、`src/app.ts` はそれ以前から
+  配備の実行経路に入っていなかった）。配備されるのは `assets.directory`
+  （`./cljs/public`）が指す静的 HTML/JS/CSS だけで、その `app.cljs` は
+  capability も server-side route も持たない、reagent + re-frame の純粋な view。
+
+  旧 `svelte/src/routes/xrpc/[...path]/+server.ts` は
+  `src/xrpc-agentgateway-proxy.ts` へ移設したが、**配線されていない**
+  （`@sveltejs/kit` 依存がもう無いので、そのままでは実行もできない。冒頭の
+  `SVELTEKIT-BACKEND-PRESERVED` marker がそれを保証する）。下の
+  `preserved-xrpc-route-*` 群はこのファイルの**凍結された性質**（かつて配備
+  されていた頃の安全境界の形）を pin するのであって、**今の配備面の安全性の
+  証拠ではない**。
 
   ## 抽出の床
 
@@ -110,8 +122,8 @@
 
 (def app-ts      (delay (slurp-file "src/app.ts")))
 (def dispatch-ts (delay (slurp-file "src/dispatcher.ts")))
-(def xrpc-route  (delay (slurp-file "svelte/src/routes/xrpc/[...path]/+server.ts")))
-(def page-svelte (delay (slurp-file "svelte/src/routes/+page.svelte")))
+(def xrpc-route  (delay (slurp-file "src/xrpc-agentgateway-proxy.ts")))
+(def app-cljs    (delay (slurp-file "cljs/src/voxelforge/app.cljs")))
 (def types-ts    (delay (slurp-file "kotoba/src/types.ts")))
 (def kotodama    (delay (read-json "kotodama.jsonld")))
 (def wrangler    (delay (read-jsonc "wrangler.jsonc")))
@@ -185,8 +197,8 @@
     (testing "worker 名が 1 面だけ動くと、配備先の逆引きが切れる"
       (is (= nm (:name @wrangler)) "kotodama name と wrangler の worker 名")
       (is (= nm (:name @pkg))      "kotodama name と package.json name")
-      (is (str/includes? @page-svelte (str "\"project\": \"" nm "\""))
-          "kotodama name と landing page の project"))
+      (is (str/includes? @app-cljs (str ":project \"" nm "\""))
+          "kotodama name と cljs app の :project"))
     (testing "version は 2 面が言う"
       (is (= (get-in @wrangler [:vars :VOXELFORGE_VERSION]) (:version @pkg))
           "wrangler の VOXELFORGE_VERSION と package.json version"))
@@ -200,8 +212,10 @@
 (deftest extraction-source-path-agrees-across-three-surfaces
   (testing "抽出元 path が動くと、上流 monorepo への逆引きが 3 面でばらける"
     (let [src-path (extract-1 @migration #":path \"([^\"]+)\"" "migration.edn" ":source :path")]
-      (is (str/includes? @page-svelte (str "\"relativePath\": \"" src-path "/"))
-          "landing page の relativePath は migration の :source :path 配下")
+      (is (str/includes? @app-cljs (str src-path "/svelte/src/routes/+page.svelte"))
+          "app.cljs の ns docstring は migration の :source :path 配下の旧 Svelte page を出典として残す")
+      (is (str/includes? @app-cljs ":relative-path \"cljs/src/voxelforge/app.cljs\"")
+          "app.cljs の :relative-path は自分自身の path を自己参照する（旧 relativePath の系譜）")
       (is (str/includes? @claude-md (str "cd " src-path))
           "CLAUDE.md の deploy 手順は同じ path へ cd する"))))
 
@@ -211,16 +225,37 @@
     (testing "配備 var と identity 文書が別の上流を指すと、名乗る依存先と喋る相手が別になる"
       (is (= (:PDS_URL vars) (:atproto deps)) "PDS_URL と backendDependencies.atproto")
       (is (= (:AUTHN_URL vars) (:authn deps)) "AUTHN_URL と backendDependencies.authn"))
-    (testing "配備される XRPC 面の既定 MCP router は、配備 var と同じ URL である"
+    (testing "温存された（配備されていない）XRPC 面の既定 MCP router は、配備 var と同じ URL である"
       (is (= (:AGENTGATEWAY_MCP_ROUTER_URL vars)
              (extract-1 @xrpc-route #"DEFAULT_MCP_ROUTER_URL = '([^']+)'"
-                        "svelte xrpc route" "DEFAULT_MCP_ROUTER_URL"))
-          "wrangler の AGENTGATEWAY_MCP_ROUTER_URL と route の既定値"))
-    (testing "framework の名乗りは配備 var と、上流へ送る header が一致する"
-      (is (= (:APP_FRAMEWORK vars)
-             (extract-1 @xrpc-route #"'x-etzhayyim-bff', '([^']+)'"
-                        "svelte xrpc route" "x-etzhayyim-bff value"))
-          "APP_FRAMEWORK と x-etzhayyim-bff header"))))
+                        "src/xrpc-agentgateway-proxy.ts" "DEFAULT_MCP_ROUTER_URL"))
+          "wrangler の AGENTGATEWAY_MCP_ROUTER_URL と、温存された route の既定値"))))
+
+;; ─── cljs 移行で生まれた既知の乖離 ──────────────────────────────────────
+
+(def preserved-route-framework-label
+  "`src/xrpc-agentgateway-proxy.ts` は配線されておらず（下記 marker が保証する）、
+   移行前の SvelteKit route の header 値をそのまま凍結保存している。この値は
+   もう何にも読まれない。`wrangler.jsonc` の APP_FRAMEWORK は今回の移行で
+   実際に配備されているフロントエンド（この cljs/ tree）を名乗るよう更新した
+   ので、2 つは 2026-09-07 以降 **一致しないのが正しい**。
+
+   一致させようとして凍結側を書き換えると、この route を配線し直したときに
+   『配備前から x-etzhayyim-bff が cljs を名乗っていた』という嘘の履歴になる
+   —— 凍結するなら、凍結した瞬間の値のまま止める。"
+  "sveltekit-edge-bff")
+
+(deftest preserved-route-framework-label-diverges-from-the-deployed-framework
+  (testing "APP_FRAMEWORK は cljs 移行後の値を名乗る"
+    (is (= "cljs-reagent-re-frame-jp-go-dds" (:APP_FRAMEWORK (:vars @wrangler)))
+        "wrangler.jsonc の APP_FRAMEWORK"))
+  (testing "温存された route の header はその瞬間の値のまま凍結されている（配備されないので実害は無い）"
+    (is (present! @xrpc-route (str "'x-etzhayyim-bff', '" preserved-route-framework-label "'")
+                  "src/xrpc-agentgateway-proxy.ts" "frozen framework header")
+        "凍結された x-etzhayyim-bff header の値"))
+  (testing "この 2 つは今は一致しない — 一致したら known-unset 側と同じ扱いで見直すこと"
+    (is (not= (:APP_FRAMEWORK (:vars @wrangler)) preserved-route-framework-label)
+        "配備実体（cljs）と凍結された旧実体（sveltekit-edge-bff）は別物")))
 
 ;; ─── 2 つの NSID 名前空間 ───────────────────────────────────────────────
 
@@ -393,37 +428,46 @@
 
 ;; ─── 実際に配備される面 ─────────────────────────────────────────────────
 
-(deftest deployed-entry-is-the-sveltekit-build-not-the-thin-edge
-  (testing "配備される main と、package が main と名乗る path は別物である"
-    (is (= "svelte/.svelte-kit/cloudflare/_worker.js" (:main @wrangler))
-        "wrangler.main は SvelteKit の build 出力")
+(deftest deployed-entry-is-static-assets-only-no-worker-main
+  (testing "main が無い —— 配備されるのは Worker コードを一切実行しない静的 assets だけである"
+    (is (not (contains? @wrangler :main))
+        "wrangler.jsonc に main は無い（SvelteKit build 出力は svelte/ ごと削除済み）")
     (is (= "src/app.ts" (:main @pkg))
-        "package.json.main は thin edge を名乗る"))
-  (testing "assets の配信元も同じ build 出力の下に在る"
-    (is (str/starts-with? (get-in @wrangler [:assets :directory]) "./svelte/.svelte-kit/cloudflare/")
-        "assets.directory は SvelteKit build の client 側")))
+        "package.json.main は thin edge を名乗ったままだが、main が無いので Worker 自体が起動せず、これは配備の実行経路ではない"))
+  (testing "assets の配信元は cljs のビルド出力である"
+    (is (= "./cljs/public" (get-in @wrangler [:assets :directory]))
+        "assets.directory は cljs/public")
+    (is (= "cljs-reagent-re-frame-jp-go-dds" (get-in @wrangler [:vars :APP_FRAMEWORK]))
+        "APP_FRAMEWORK は移行後の値")))
 
-(deftest deployed-xrpc-route-delegates-auth-upstream-and-never-caches
-  (testing "配備される面は authorization を上流へ渡す（ここで削ると上流が誰とも判定できない）"
+;; ─── 温存された（配備されていない）旧 xrpc route の凍結された性質 ────────
+
+(deftest preserved-xrpc-route-still-shows-the-safety-properties-it-had-when-deployed
+  (testing "この route はもう配備されていない —— 冒頭の marker がそれを保証する"
+    (is (str/starts-with?
+         @xrpc-route
+         "// SVELTEKIT-BACKEND-PRESERVED: moved out of svelte/ during the cljs migration; not wired.")
+        "src/xrpc-agentgateway-proxy.ts の 1 行目は SVELTEKIT-BACKEND-PRESERVED marker"))
+  (testing "配備されていた当時の性質はそのまま凍結されている: authorization を上流へ渡す"
     (is (present! @xrpc-route "const headers = new Headers(event.request.headers);"
-                  "svelte xrpc route" "inbound headers copied")
+                  "src/xrpc-agentgateway-proxy.ts" "inbound headers copied")
         "inbound header をそのまま引き継ぐ")
     (is (not (str/includes? @xrpc-route "headers.delete('authorization')"))
-        "authorization は削らない —— 認証は MCP router に委譲されている"))
+        "authorization は削らない —— 認証は MCP router に委譲されている（凍結された挙動）"))
   (testing "inbound の host header は上流へ持ち越さない"
-    (is (present! @xrpc-route "headers.delete('host');" "svelte xrpc route" "host stripped")
+    (is (present! @xrpc-route "headers.delete('host');" "src/xrpc-agentgateway-proxy.ts" "host stripped")
         "host は削ってから上流へ送る"))
-  (testing "XRPC 応答が cache されると、actor 状態が別の閲覧者へ漏れる"
+  (testing "XRPC 応答が cache されると、actor 状態が別の閲覧者へ漏れる —— この性質も凍結されている"
     (is (present! @xrpc-route "headers.set('cache-control', 'no-store');"
-                  "svelte xrpc route" "no-store on every response")
+                  "src/xrpc-agentgateway-proxy.ts" "no-store on every response")
         "noStore が全応答に cache-control: no-store を付ける"))
   (testing "preflight は POST に閉じる"
     (is (present! @xrpc-route "'access-control-allow-methods': 'POST,OPTIONS'"
-                  "svelte xrpc route" "preflight methods")
+                  "src/xrpc-agentgateway-proxy.ts" "preflight methods")
         "許可 method は POST,OPTIONS のみ"))
   (testing "NSID が空の要求は上流へ送らない"
     (is (present! @xrpc-route "if (!nsid) return noStore({ error: 'Missing XRPC method' }, { status: 400 });"
-                  "svelte xrpc route" "empty nsid rejected")
+                  "src/xrpc-agentgateway-proxy.ts" "empty nsid rejected")
         "path が空なら 400 で止める")))
 
 ;; ─── 既知の穴を封じ込める ───────────────────────────────────────────────
