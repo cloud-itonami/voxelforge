@@ -55,7 +55,7 @@
   各抽出は見つからなければ throw する。**『抽出できなかった』が
   『合意している』と同じ顔をしてはならない** —— 正規表現は実装が
   変わると静かに空振りし、空振りは合格と同じ緑を返すからである。"
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is testing]]
             ["fs" :as fs]))
 
