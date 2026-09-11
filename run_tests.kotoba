@@ -1,7 +1,7 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; run_tests.cljs — voxelforge の面契約検査。
 ;;
-;;   nbb --classpath test run_tests.cljs
+;;   kbb --backend sci --classpath test run_tests.cljs
 ;;
 ;; voxelforge は state-less な L3 dispatcher で、実際の計算は LangGraph Server と
 ;; RunPod 側に居る。この repo の実体は『複数の面が同じ actor・同じ lexicon・同じ
