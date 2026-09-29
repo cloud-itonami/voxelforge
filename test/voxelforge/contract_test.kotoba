@@ -15,7 +15,7 @@
     kotodama.jsonld                     actor identity（DID / nanoid / nsidPrefixes）
     package.json / README.edn           名前と版
     migration.edn                       抽出元の path
-    CLAUDE.md                           運用手順（smoke の実引数を含む）
+    AGENTS.md                           運用手順（smoke の実引数を含む）
 
   どの面も他を import していないので、片方だけ動いた drift は throw しない
   —— identity 文書と worker が別の lexicon を名乗っても配備は成功し、
@@ -26,7 +26,7 @@
   edge が serve する XRPC は `com.etzhayyim.voxelforge.*` で、identity 文書の
   `nsidPrefixes` と記録面の collection は `com.etzhayyim.apps.voxelforge.*` で
   ある。**どちらも現に存在する別の名前空間**であって、片方が誤植ではない
-  （CLAUDE.md 自身が表では `apps.` 無し、Forbidden 節の lexicon path では
+  （AGENTS.md 自身が表では `apps.` 無し、Forbidden 節の lexicon path では
   `apps/` 有りと、両方を書いている）。ここは両方を pin して、片方が動いたら
   見えるようにする —— 「どちらが正か」はこのテストの決めることではない。
 
@@ -130,7 +130,7 @@
 (def pkg         (delay (read-json "package.json")))
 (def readme      (delay (slurp-file "README.edn")))
 (def migration   (delay (slurp-file "migration.edn")))
-(def claude-md   (delay (slurp-file "CLAUDE.md")))
+(def claude-md   (delay (slurp-file "AGENTS.md")))
 
 ;; ─── thin edge / dispatcher から読む事実 ────────────────────────────────
 
@@ -217,7 +217,7 @@
       (is (str/includes? @app-cljs ":relative-path \"cljs/src/voxelforge/app.cljs\"")
           "app.cljs の :relative-path は自分自身の path を自己参照する（旧 relativePath の系譜）")
       (is (str/includes? @claude-md (str "cd " src-path))
-          "CLAUDE.md の deploy 手順は同じ path へ cd する"))))
+          "AGENTS.md の deploy 手順は同じ path へ cd する"))))
 
 (deftest backend-urls-agree-between-deploy-vars-and-identity-doc
   (let [vars (:vars @wrangler)
@@ -290,10 +290,10 @@
       (doseq [s (:surfaces @edge)]
         (is (str/starts-with? s (str "/xrpc/" prefix))
             (str s " は /xrpc/" prefix " 配下")))))
-  (testing "CLAUDE.md の表と /_app/meta は同じ面を名乗る"
+  (testing "AGENTS.md の表と /_app/meta は同じ面を名乗る"
     (doseq [s (:surfaces @edge)]
       (is (str/includes? @claude-md (str "`" s "`"))
-          (str "CLAUDE.md の Surfaces 表に " s " が在る")))))
+          (str "AGENTS.md の Surfaces 表に " s " が在る")))))
 
 ;; ─── thin edge の安全境界 ───────────────────────────────────────────────
 
@@ -414,15 +414,15 @@
 
 (deftest documented-smoke-arguments-are-accepted-by-the-record-validators
   (testing "手順書の実引数が validator に弾かれると、書いてあるとおりに叩いて失敗する"
-    (doseq [d (all-matches @claude-md #"\"targetVoxelDim\": (\d+)" "CLAUDE.md" "targetVoxelDim values")]
+    (doseq [d (all-matches @claude-md #"\"targetVoxelDim\": (\d+)" "AGENTS.md" "targetVoxelDim values")]
       (let [n (js/parseInt d)]
         (is (and (>= n (:voxel-dim-min @records)) (<= n (:voxel-dim-max @records)))
             (str "targetVoxelDim " n " は isVoxelDim の範囲 "
                  (:voxel-dim-min @records) "–" (:voxel-dim-max @records) " の中"))))
-    (doseq [f (all-matches @claude-md #"\"targetFormat\": \"([a-z]+)\"" "CLAUDE.md" "targetFormat values")]
+    (doseq [f (all-matches @claude-md #"\"targetFormat\": \"([a-z]+)\"" "AGENTS.md" "targetFormat values")]
       (is (contains? (set (:target-formats @records)) f)
           (str "targetFormat " f " は TARGET_FORMATS に在る")))
-    (doseq [k (all-matches @claude-md #"\"kind\": \"([a-z]+)\"" "CLAUDE.md" "kind values")]
+    (doseq [k (all-matches @claude-md #"\"kind\": \"([a-z]+)\"" "AGENTS.md" "kind values")]
       (is (contains? (set (:design-kinds @records)) k)
           (str "kind " k " は DESIGN_KINDS に在る")))))
 
